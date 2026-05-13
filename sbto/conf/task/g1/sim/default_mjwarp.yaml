@@ -1,0 +1,13 @@
+_target_: sbto.sim.sim_mjwarp_rollout.SimMjwarpRollout
+cfg:
+  _target_: sbto.sim.sim_mjwarp_rollout.ConfigMjwarpRollout
+  T: 500
+  step_knots: 25
+  interp_kind: "pchip"
+  device: "cuda:0"
+  # Increase if "nefc overflow" warnings appear during contact-heavy rollouts.
+  njmax: 128
+scaling:
+  _target_: sbto.sim.action_scaling.Scaling
+  name: nominal
+  clip: False

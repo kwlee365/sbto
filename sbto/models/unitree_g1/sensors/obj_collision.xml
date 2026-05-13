@@ -3,12 +3,12 @@
         <!-- <contact subtree1="obj" subtree2="pelvis" data="found" num="1" name="obj_collision"/> -->
 
         <!-- obj - collision  -->
-        <contact subtree1="empty_body" geom2="left_thigh_collision" data="found" num="1" name="obj_left_thigh_cnt"/>
-        <contact subtree1="empty_body" geom2="right_thigh_collision" data="found" num="1" name="obj_right_thigh_cnt"/>
-        <contact subtree1="empty_body" geom2="left_shin_collision" data="found" num="1" name="obj_left_shin_cnt"/>
-        <contact subtree1="empty_body" geom2="right_shin_collision" data="found" num="1" name="obj_right_shin_cnt"/>
-        <contact subtree1="empty_body" geom2="torso_collision" data="found" num="1" name="torso_obj"/>
-        <contact subtree1="empty_body" geom2="pelvis_collision" data="found" num="1" name="pelvis_obj"/>
-        <contact subtree1="empty_body" geom2="head_collision" data="found" num="1" name="head_obj"/>
+        <contact geom1="obj" geom2="left_thigh_collision" data="found" num="1" name="obj_left_thigh_cnt"/>
+        <contact geom1="obj" geom2="right_thigh_collision" data="found" num="1" name="obj_right_thigh_cnt"/>
+        <contact geom1="obj" geom2="left_shin_collision" data="found" num="1" name="obj_left_shin_cnt"/>
+        <contact geom1="obj" geom2="right_shin_collision" data="found" num="1" name="obj_right_shin_cnt"/>
+        <contact geom1="obj" geom2="torso_collision" data="found" num="1" name="torso_obj"/>
+        <contact geom1="obj" geom2="pelvis_collision" data="found" num="1" name="pelvis_obj"/>
+        <contact geom1="obj" geom2="head_collision" data="found" num="1" name="head_obj"/>
     </sensor>
 </mujoco>

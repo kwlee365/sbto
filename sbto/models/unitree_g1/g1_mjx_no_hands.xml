@@ -303,7 +303,7 @@
                           <!-- <geom name="left_hand_collision" class="collision" size="0.035" rgba=".2 .6 .2 .2"
                             fromto="0.07 0 0 0.15 -0.02 0"/> -->
                           <site name="left_palm" pos="0.0415 0 0" size="0.01"/>
-                          <geom name="left_hand_collision" class="collision" type="cylinder" size="0.02" rgba=".2 .6 .2 .2"
+                          <geom name="left_hand_collision" class="collision" size="0.02" rgba=".2 .6 .2 .2"
                             fromto="0 0 0 0.0415 0 0"/>
                         </body>
                       </body>
@@ -357,7 +357,7 @@
                           <!-- <geom name="right_hand_collision" class="collision" size="0.035" rgba=".2 .6 .2 .2"
                             fromto="0.07 0 0 0.15 0.02 0"/> -->
                           <site name="right_palm" pos="0.0415 0 0" size="0.01"/>
-                          <geom name="right_hand_collision" class="collision" type="cylinder" size="0.02" rgba=".2 .6 .2 .2"
+                          <geom name="right_hand_collision" class="collision" size="0.02" rgba=".2 .6 .2 .2"
                             fromto="0 0 0 0.0415 0 0"/>
                         </body>
                       </body>
