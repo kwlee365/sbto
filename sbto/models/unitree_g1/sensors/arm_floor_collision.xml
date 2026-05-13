@@ -1,0 +1,22 @@
+<mujoco>
+    <sensor>
+        <!-- left arm chain - floor -->
+        <contact geom1="floor" geom2="left_shoulder_yaw_collision"
+                 data="found" num="1" name="left_shoulder_floor_cnt"/>
+        <contact geom1="floor" geom2="left_elbow_yaw_collision"
+                 data="found" num="1" name="left_elbow_floor_cnt"/>
+        <contact geom1="floor" geom2="left_wrist_collision"
+                 data="found" num="1" name="left_wrist_floor_cnt"/>
+        <contact geom1="floor" geom2="left_hand_collision"
+                 data="found" num="1" name="left_hand_floor_cnt"/>
+        <!-- right arm chain - floor -->
+        <contact geom1="floor" geom2="right_shoulder_yaw_collision"
+                 data="found" num="1" name="right_shoulder_floor_cnt"/>
+        <contact geom1="floor" geom2="right_elbow_yaw_collision"
+                 data="found" num="1" name="right_elbow_floor_cnt"/>
+        <contact geom1="floor" geom2="right_wrist_collision"
+                 data="found" num="1" name="right_wrist_floor_cnt"/>
+        <contact geom1="floor" geom2="right_hand_collision"
+                 data="found" num="1" name="right_hand_floor_cnt"/>
+    </sensor>
+</mujoco>

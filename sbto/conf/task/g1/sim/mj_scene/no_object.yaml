@@ -8,6 +8,7 @@ cfg:
   - sbto/models/unitree_g1/sensors/hands_pos_no_obj.xml
   - sbto/models/unitree_g1/sensors/torso.xml
   - sbto/models/unitree_g1/sensors/self_collision.xml
+  - sbto/models/unitree_g1/sensors/arm_floor_collision.xml
   xml_contact_pairs_path:
   - sbto/models/unitree_g1/contact_pairs/minimal.xml
   add_body: {}

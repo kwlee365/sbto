@@ -1,3 +1,6 @@
+import os
+import pickle
+
 import mujoco
 import numpy as np
 from scipy.interpolate import interp1d
@@ -42,6 +45,36 @@ def load_npz_reference(path: str) -> Dict[str, np.ndarray]:
         "qpos": qpos,
         "fps": float(fps),
     }
+
+def load_pkl_reference(path: str) -> Dict[str, np.ndarray]:
+    """
+    Loads reference from a CMR-style pickle file.
+    Expects dict keys: root_pos (T,3), root_rot (T,4), dof_pos (T,N), fps.
+    Assembles qpos in MuJoCo column order [root_pos, root_rot, dof_pos].
+    Quaternion convention (wxyz vs xyzw) and any pos/quat reordering are
+    handled by the flip_quat_pos / quat_wxyz flags in ReferenceMotion.
+    """
+    with open(path, "rb") as f:
+        data = pickle.load(f)
+
+    qpos = np.concatenate(
+        [data["root_pos"], data["root_rot"], data["dof_pos"]], axis=1
+    )
+    fps = float(data["fps"])
+
+    return {
+        "qpos": np.asarray(qpos),
+        "fps": fps,
+    }
+
+def load_reference(path: str) -> Dict[str, np.ndarray]:
+    """Dispatch reference-motion loading by file extension."""
+    ext = os.path.splitext(path)[1].lower()
+    if ext == ".npz":
+        return load_npz_reference(path)
+    if ext == ".pkl":
+        return load_pkl_reference(path)
+    raise ValueError(f"Unsupported reference motion format: {ext} ({path})")
 
 def make_quaternions_continuous(quat_traj: np.ndarray):
     """
@@ -88,7 +121,7 @@ class ReferenceMotion:
         self.sensor_data = {}
 
         # Load base data
-        base = load_npz_reference(ref_motion_path)
+        base = load_reference(ref_motion_path)
         self.fps = base["fps"] * speedup
         self._qpos = base["qpos"]
 
@@ -101,14 +134,16 @@ class ReferenceMotion:
             if flip_quat_pos:
                 self._qpos[:, base_qpos] = flip_quat_pos_in_traj(self._qpos[:, base_qpos])
             if not quat_wxyz:
-                self._qpos[:, base_qpos] = quat_xyzw_to_wxyz(self._qpos[:, base_qpos])
+                base_quat_adr = self.mj_scene.base_quat_adr
+                self._qpos[:, base_quat_adr] = quat_xyzw_to_wxyz(self._qpos[:, base_quat_adr])
 
         if self.mj_scene.is_obj:
             obj_qpos = self.mj_scene.obj_qpos_adr
             if flip_quat_pos:
                 self._qpos[:, obj_qpos] = flip_quat_pos_in_traj(self._qpos[:, obj_qpos])
             if not quat_wxyz:
-                self._qpos[:, obj_qpos] = quat_xyzw_to_wxyz(self._qpos[:, obj_qpos])
+                obj_quat_adr = self.mj_scene.obj_quat_adr
+                self._qpos[:, obj_quat_adr] = quat_xyzw_to_wxyz(self._qpos[:, obj_quat_adr])
 
         self.time = compute_time_array(self.fps, len(self._qpos))
         self.trim_traj(t0, t_end)

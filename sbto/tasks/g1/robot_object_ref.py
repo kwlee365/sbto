@@ -308,6 +308,6 @@ class G1RobotObjRef(TaskMjRef):
         self.add_sensor_cost(
             G1.Sensors.SELF_COLLISION,
             hamming_dist_nb,
-            ref_values=np.zeros((self.T-1, 1), dtype=np.int32),
+            ref_values=np.zeros((self.T-1, len(G1.Sensors.SELF_COLLISION)), dtype=np.int32),
             weights=cfg.self_collision,
         )

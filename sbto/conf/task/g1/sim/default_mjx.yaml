@@ -1,0 +1,11 @@
+_target_: sbto.sim.sim_mjx_rollout.SimMjxRollout
+cfg:
+  _target_: sbto.sim.sim_mjx_rollout.ConfigMjxRollout
+  T: 500
+  step_knots: 25
+  interp_kind: "pchip"
+  device: "gpu"
+scaling:
+  _target_: sbto.sim.action_scaling.Scaling
+  name: nominal
+  clip: False

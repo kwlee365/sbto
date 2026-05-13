@@ -36,3 +36,4 @@ cfg:
   hand_position: 5.
 
   self_collision: 1.0
+  arm_floor_collision: 1.0

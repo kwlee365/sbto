@@ -5,7 +5,7 @@ cfg:
   step_knots: 25
   interp_kind: "pchip"
   Nthread: -1
-  _chunk_size: 2
+  _chunk_size: 32
 scaling:
   _target_: sbto.sim.action_scaling.Scaling
   name: nominal

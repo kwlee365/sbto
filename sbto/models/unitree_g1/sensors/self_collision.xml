@@ -1,7 +1,46 @@
 <mujoco>
     <sensor>
-        <!-- self collision -->
-        <contact subtree1="pelvis" subtree2="pelvis" data="found" num="1" name="self_collision"/>
-        <!-- <contact subtree1="left_hip_pitch_link" subtree2="right_hip_pitch_link" data="found" num="1" name="self_collision"/> -->
+        <!-- Explicit robot-robot pair contact sensors (MJX-compatible).
+             Sensors for pairs not present in the active contact_pairs file
+             simply read 0 (no contact is computed), so listing the union
+             of pairs across minimal.xml and reduced.xml is safe. -->
+
+        <!-- feet / linkage_brace cross -->
+        <contact geom1="left_foot_box_collision"      geom2="right_foot_box_collision"      data="found" num="1" name="self_cnt_foot_foot"/>
+        <contact geom1="left_foot_box_collision"      geom2="right_linkage_brace_collision" data="found" num="1" name="self_cnt_lfoot_rbrace"/>
+        <contact geom1="right_foot_box_collision"     geom2="left_linkage_brace_collision"  data="found" num="1" name="self_cnt_rfoot_lbrace"/>
+        <contact geom1="left_linkage_brace_collision" geom2="right_linkage_brace_collision" data="found" num="1" name="self_cnt_brace_brace"/>
+
+        <!-- shin / shin -->
+        <contact geom1="left_shin_collision" geom2="right_shin_collision" data="found" num="1" name="self_cnt_shin_shin"/>
+
+        <!-- torso - elbows -->
+        <contact geom1="torso_collision" geom2="left_elbow_yaw_collision"  data="found" num="1" name="self_cnt_torso_lelbow"/>
+        <contact geom1="torso_collision" geom2="right_elbow_yaw_collision" data="found" num="1" name="self_cnt_torso_relbow"/>
+
+        <!-- thigh - wrist (all combinations) -->
+        <contact geom1="left_thigh_collision"  geom2="left_wrist_collision"  data="found" num="1" name="self_cnt_lthigh_lwrist"/>
+        <contact geom1="right_thigh_collision" geom2="right_wrist_collision" data="found" num="1" name="self_cnt_rthigh_rwrist"/>
+        <contact geom1="right_thigh_collision" geom2="left_wrist_collision"  data="found" num="1" name="self_cnt_rthigh_lwrist"/>
+        <contact geom1="left_thigh_collision"  geom2="right_wrist_collision" data="found" num="1" name="self_cnt_lthigh_rwrist"/>
+
+        <!-- torso - wrists -->
+        <contact geom1="torso_collision" geom2="left_wrist_collision"  data="found" num="1" name="self_cnt_torso_lwrist"/>
+        <contact geom1="torso_collision" geom2="right_wrist_collision" data="found" num="1" name="self_cnt_torso_rwrist"/>
+
+        <!-- hip - wrists -->
+        <contact geom1="left_hip_collision"  geom2="left_wrist_collision"  data="found" num="1" name="self_cnt_lhip_lwrist"/>
+        <contact geom1="right_hip_collision" geom2="right_wrist_collision" data="found" num="1" name="self_cnt_rhip_rwrist"/>
+
+        <!-- thigh - elbows -->
+        <contact geom1="left_thigh_collision"  geom2="left_elbow_yaw_collision"  data="found" num="1" name="self_cnt_lthigh_lelbow"/>
+        <contact geom1="right_thigh_collision" geom2="right_elbow_yaw_collision" data="found" num="1" name="self_cnt_rthigh_relbow"/>
+
+        <!-- thigh - thigh -->
+        <contact geom1="left_thigh_collision" geom2="right_thigh_collision" data="found" num="1" name="self_cnt_thigh_thigh"/>
+
+        <!-- hip - elbows -->
+        <contact geom1="left_hip_collision"  geom2="left_elbow_yaw_collision"  data="found" num="1" name="self_cnt_lhip_lelbow"/>
+        <contact geom1="right_hip_collision" geom2="right_elbow_yaw_collision" data="found" num="1" name="self_cnt_rhip_relbow"/>
     </sensor>
 </mujoco>

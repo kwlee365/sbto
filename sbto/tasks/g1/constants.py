@@ -12,7 +12,36 @@ _cnt_sens_dim_obj = 1 # found
 
 class Sensors:
     SELF_COLLISION = [
-        "self_collision"
+        "self_cnt_foot_foot",
+        "self_cnt_lfoot_rbrace",
+        "self_cnt_rfoot_lbrace",
+        "self_cnt_brace_brace",
+        "self_cnt_shin_shin",
+        "self_cnt_torso_lelbow",
+        "self_cnt_torso_relbow",
+        "self_cnt_lthigh_lwrist",
+        "self_cnt_rthigh_rwrist",
+        "self_cnt_rthigh_lwrist",
+        "self_cnt_lthigh_rwrist",
+        "self_cnt_torso_lwrist",
+        "self_cnt_torso_rwrist",
+        "self_cnt_lhip_lwrist",
+        "self_cnt_rhip_rwrist",
+        "self_cnt_lthigh_lelbow",
+        "self_cnt_rthigh_relbow",
+        "self_cnt_thigh_thigh",
+        "self_cnt_lhip_lelbow",
+        "self_cnt_rhip_relbow",
+    ]
+    ARM_FLOOR_COLLISION = [
+        "left_shoulder_floor_cnt",
+        "left_elbow_floor_cnt",
+        "left_wrist_floor_cnt",
+        "left_hand_floor_cnt",
+        "right_shoulder_floor_cnt",
+        "right_elbow_floor_cnt",
+        "right_wrist_floor_cnt",
+        "right_hand_floor_cnt",
     ]
     FEET_CONTACTS = [
         "left_foot1",

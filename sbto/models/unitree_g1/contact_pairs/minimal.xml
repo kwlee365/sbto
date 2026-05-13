@@ -23,6 +23,15 @@
     <pair name="pelvis_floor" geom1="pelvis_collision" geom2="floor" condim="1"/>
     <!-- torso - floor -->
     <pair name="torso_floor" geom1="torso_collision" geom2="floor" condim="1"/>
+    <!-- arm chain - floor -->
+    <pair name="left_shoulder_yaw_floor"  geom1="left_shoulder_yaw_collision"  geom2="floor" condim="1"/>
+    <pair name="right_shoulder_yaw_floor" geom1="right_shoulder_yaw_collision" geom2="floor" condim="1"/>
+    <pair name="left_elbow_floor"  geom1="left_elbow_yaw_collision"  geom2="floor" condim="1"/>
+    <pair name="right_elbow_floor" geom1="right_elbow_yaw_collision" geom2="floor" condim="1"/>
+    <pair name="left_wrist_floor"  geom1="left_wrist_collision"  geom2="floor" condim="1"/>
+    <pair name="right_wrist_floor" geom1="right_wrist_collision" geom2="floor" condim="1"/>
+    <pair name="left_hand_floor"   geom1="left_hand_collision"   geom2="floor" condim="1"/>
+    <pair name="right_hand_floor"  geom1="right_hand_collision"  geom2="floor" condim="1"/>
   </contact>
 
 </mujoco>
