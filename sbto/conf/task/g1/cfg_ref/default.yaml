@@ -11,6 +11,6 @@ speedup: 1.0
 z_offset: 0.0
 # If free joint are expressed in [quat, pos] format
 # (like OmniRetarget)
-flip_quat_pos: True
+flip_quat_pos: False
 # If quaternion are expressed in [qw, qx, qy, qz] format
-quat_wxyz: True
+quat_wxyz: False

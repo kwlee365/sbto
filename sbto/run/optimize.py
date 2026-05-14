@@ -20,6 +20,11 @@ def compute_cost(
     ):
     return task.cost(*sim.rollout(u_knots)[1:])
 
+
+def _has_device_path(sim, task) -> bool:
+    return hasattr(sim, "rollout_t_steps_device") and hasattr(task, "cost_jax")
+
+
 def compute_cost_t_end(
     u_knots,
     sim: SimRolloutBase,
@@ -29,6 +34,10 @@ def compute_cost_t_end(
     ):
     # Rescale cost based on the number of timesteps
     scale = sim.T / t_end
+    if _has_device_path(sim, task):
+        t_actual, x_d, u_d, obs_d = sim.rollout_t_steps_device(u_knots, t_end)
+        costs_d = task.cost_jax(x_d, u_d, obs_d, t_end=t_actual)
+        return scale * np.asarray(costs_d)
     return scale * task.cost(*sim.rollout_t_steps(u_knots, t_end)[1:])
 
 def compute_cost_multiple_shooting(

@@ -8,6 +8,7 @@ from functools import wraps
 from collections import defaultdict
 
 from .cost import get_cost_fn_idx, compute_total_cost
+from .cost_jax import JAX_COST_FUNS
 
 Array = npt.NDArray[np.float64]
 IntArray = npt.NDArray[np.int64]
@@ -243,3 +244,89 @@ class OCPBase(ABC):
             self._cost_terms["ref"],
             self._cost_terms["w"],
         )
+
+    # ------------------------------------------------------------------
+    # Device-side (JAX) cost path
+    # ------------------------------------------------------------------
+    # _jax_cost_state is initialized lazily on the first call to cost_jax:
+    #   - {idx, ref, w} are uploaded to the JAX device once
+    #   - var_type / f_idx stay as Python ints (static -- closed over by jit)
+    # cost_jax then loops statically over registered terms and dispatches
+    # to the matching kernel in JAX_COST_FUNS. The whole reduction stays on
+    # the device; the returned array is jax.Array of shape (N,).
+
+    def _prepare_jax_cost(self, device=None):
+        """Upload (idx, ref, w) for each cost term to the JAX device."""
+        import jax
+        import jax.numpy as jnp
+
+        # already prepared on the same device -> reuse
+        if getattr(self, "_jax_cost_state", None) is not None:
+            if self._jax_cost_state.get("device", None) == device:
+                return
+        idxs_d, refs_d, ws_d = [], [], []
+        for idx, ref, w in zip(
+            self._cost_terms["idx"],
+            self._cost_terms["ref"],
+            self._cost_terms["w"],
+        ):
+            idx_j = jnp.asarray(idx, dtype=jnp.int32)
+            ref_j = jnp.asarray(ref, dtype=jnp.float32)
+            w_j = jnp.asarray(w, dtype=jnp.float32)
+            if device is not None:
+                idx_j = jax.device_put(idx_j, device)
+                ref_j = jax.device_put(ref_j, device)
+                w_j = jax.device_put(w_j, device)
+            idxs_d.append(idx_j)
+            refs_d.append(ref_j)
+            ws_d.append(w_j)
+
+        self._jax_cost_state = {
+            "device": device,
+            "var_types": list(self._cost_terms["var_type"]),
+            "f_idxs": list(self._cost_terms["f_idx"]),
+            "idxs": idxs_d,
+            "refs": refs_d,
+            "ws": ws_d,
+        }
+
+    def cost_jax(self, x_traj, u_traj, obs_traj, t_end=None):
+        """
+        Device-side cost. Inputs are jax arrays of shape (N, T, *). Returns a
+        jax array of shape (N,). Caller is responsible for np.asarray() if a
+        host-side value is needed.
+
+        Must be preceded by _prepare_jax_cost() (idempotent). For a typical
+        single-device run that happens once.
+
+        t_end (int or None): if set, the contribution from time steps
+        t >= t_end is masked out (weight zeroed). This lets the rollout
+        run at a single fixed T (good for one-shot JIT) while supporting
+        incremental optimization that varies the effective horizon.
+        """
+        import jax.numpy as jnp
+
+        if getattr(self, "_jax_cost_state", None) is None:
+            self._prepare_jax_cost()
+
+        st = self._jax_cost_state
+        T_full = x_traj.shape[1]
+        time_mask = None
+        if t_end is not None and t_end < T_full:
+            time_mask = (jnp.arange(T_full) < t_end).astype(jnp.float32)
+
+        total = None
+        for var_type, f_idx, idx, ref, w in zip(
+            st["var_types"], st["f_idxs"], st["idxs"], st["refs"], st["ws"]
+        ):
+            if var_type == 0:
+                var = x_traj
+            elif var_type == 1:
+                var = u_traj
+            else:
+                var = obs_traj
+            sub = var[..., idx]
+            w_eff = w if time_mask is None else (w * time_mask[:, None])
+            term = JAX_COST_FUNS[f_idx](sub, ref, w_eff)
+            total = term if total is None else (total + term)
+        return total

@@ -134,27 +134,80 @@ class SimMjxRollout(SimRolloutBase):
     # Core: JIT-compiled batched rollout
     # ------------------------------------------------------------------
 
-    def _build_rollout_fn(self, T: int):
-        """Build the JIT'd function that runs N rollouts of length T."""
+    def _build_rollout_fn(self):
+        """
+        Build the JIT'd rollout fn. Compiled once.
+
+        Implementation: jax.lax.fori_loop with dynamic upper bound t_end.
+        Output buffers x_traj/obs_traj are pre-allocated to full self.T;
+        only the first t_end entries are written. The cost function masks
+        the remainder via its own t_end argument.
+
+        Result:
+          - 1 JIT compile total (t_end is a traced argument, not static)
+          - per-call cost scales with t_end (incremental opt stays fast)
+        """
         mjx_model = self.mjx_model
         Nq = self.Nq
+        Nx = self.Nx
+        T_full = self.T
+        # Read the sensor width directly from a probe data. The mj_scene may
+        # have had sensors deleted *after* mjx.put_model() ran in __init__, so
+        # self.mj_scene.Nobs and mjx_model's sensordata size can disagree.
+        Nobs = int(mjx.make_data(mjx_model).sensordata.shape[-1])
 
-        def single_rollout(x0, u_traj):
+        def single_rollout(x0, u_traj, t_end):
+            # u_traj: (T_full, Nu) -- already padded
+            # t_end:  traced int scalar
             data = mjx.make_data(mjx_model)
             data = data.replace(qpos=x0[:Nq], qvel=x0[Nq:])
             data = mjx.forward(mjx_model, data)
 
-            def step(d, u):
-                d = d.replace(ctrl=u)
+            x_arr = jp.zeros((T_full, Nx))
+            obs_arr = jp.zeros((T_full, Nobs))
+
+            def body(t, carry):
+                d, xs, os_ = carry
+                d = d.replace(ctrl=u_traj[t])
                 d = mjx.step(mjx_model, d)
                 x = jp.concatenate([d.qpos, d.qvel])
-                return d, (x, d.sensordata)
+                xs = xs.at[t].set(x)
+                os_ = os_.at[t].set(d.sensordata)
+                return (d, xs, os_)
 
-            _, (x_traj, obs_traj) = jax.lax.scan(step, data, u_traj)
-            return x_traj, obs_traj
+            _, x_arr, obs_arr = jax.lax.fori_loop(
+                0, t_end, body, (data, x_arr, obs_arr)
+            )
+            return x_arr, obs_arr
 
-        batched = jax.vmap(single_rollout, in_axes=(None, 0))
+        batched = jax.vmap(single_rollout, in_axes=(None, 0, None))
         return jax.jit(batched, device=self.device)
+
+    def _ensure_rollout_fn(self):
+        """Build the full-T rollout fn once (lazy: self.T may be set by task)."""
+        if self._rollout_fn is None:
+            self._rollout_fn = self._build_rollout_fn()
+            self._last_T = self.T
+
+    @staticmethod
+    def _pad_u_traj_to_T(u_traj, T_full):
+        """
+        Pad u_traj along axis=1 (time) to T_full using last-value sustain.
+        Accepts numpy or jax arrays. If already >= T_full, truncate.
+        """
+        T_actual = u_traj.shape[1]
+        if T_actual == T_full:
+            return u_traj
+        if T_actual > T_full:
+            return u_traj[:, :T_full, :]
+        N, _, Nu = u_traj.shape
+        last = u_traj[:, -1:, :]
+        if isinstance(u_traj, np.ndarray):
+            pad = np.broadcast_to(last, (N, T_full - T_actual, Nu))
+            return np.concatenate([u_traj, pad], axis=1)
+        # jax
+        pad = jp.broadcast_to(last, (N, T_full - T_actual, Nu))
+        return jp.concatenate([u_traj, pad], axis=1)
 
     def _rollout_dynamics(
         self,
@@ -162,27 +215,26 @@ class SimMjxRollout(SimRolloutBase):
         with_x0: bool = False,
     ) -> Tuple[Array, Array, Array, Array]:
         """
-        u_traj: [N, T, Nu] numpy.
-        Returns (t, x, u, obs) as numpy arrays, matching SimMjRollout shapes.
+        u_traj: [N, T_actual, Nu] numpy (T_actual <= self.T).
+        One-compile rollout: fori_loop runs exactly T_actual steps. Outputs
+        are sliced back to T_actual for caller-visible shape compatibility.
         """
-        N, T, _ = u_traj.shape
+        N, T_actual, _ = u_traj.shape
+        self._ensure_rollout_fn()
 
-        if self._rollout_fn is None or T != self._last_T:
-            self._rollout_fn = self._build_rollout_fn(T)
-            self._last_T = T
-            self._last_N = N
-
-        u_jax = jp.asarray(u_traj)
+        u_padded = self._pad_u_traj_to_T(u_traj, self.T)
+        u_jax = jp.asarray(u_padded)
         x0_jax = jp.asarray(self.x_0)
+        t_end_arg = jp.int32(T_actual)
 
-        x_traj, obs_traj = self._rollout_fn(x0_jax, u_jax)
+        x_traj, obs_traj = self._rollout_fn(x0_jax, u_jax, t_end_arg)
         x_traj.block_until_ready()
 
-        x_np = np.asarray(x_traj, dtype=np.float64)
-        obs_np = np.asarray(obs_traj, dtype=np.float64)
+        x_np = np.asarray(x_traj[:, :T_actual, :], dtype=np.float64)
+        obs_np = np.asarray(obs_traj[:, :T_actual, :], dtype=np.float64)
 
-        t = (np.arange(1, T + 1, dtype=np.float64) * self.dt)[None, :, None]
-        t = np.broadcast_to(t, (N, T, 1)).copy()
+        t = (np.arange(1, T_actual + 1, dtype=np.float64) * self.dt)[None, :, None]
+        t = np.broadcast_to(t, (N, T_actual, 1)).copy()
 
         if with_x0:
             x0_b = np.broadcast_to(self.x_0[None, None, :], (N, 1, self.Nx)).copy()
@@ -191,8 +243,55 @@ class SimMjxRollout(SimRolloutBase):
             obs0 = np.zeros((N, 1, obs_np.shape[-1]))
             obs_np = np.concatenate([obs0, obs_np], axis=1)
 
-        self.nstep_allocated = T
+        self.nstep_allocated = T_actual
         return t, x_np, u_traj, obs_np
+
+    # ------------------------------------------------------------------
+    # Device-side rollout: keeps everything on GPU.
+    # ------------------------------------------------------------------
+    # Returns (t_end, x_jax, u_jax, obs_jax) where x_jax/obs_jax are full
+    # self.T arrays on device. t_end is the integer cutoff that cost_jax
+    # should mask to (so the trailing portion of the rollout doesn't
+    # contribute even though it was simulated).
+
+    def _rollout_dynamics_device(self, u_traj_full: Array, t_end: int):
+        """
+        u_traj_full: shape (N, self.T, Nu) -- already padded to full T.
+        fori_loop iterates exactly t_end times. Output buffers are full-T,
+        with the trailing portion (>= t_end) left at zero. Cost masking
+        handles the unused region.
+        """
+        self._ensure_rollout_fn()
+
+        u_jax = jp.asarray(u_traj_full)
+        x0_jax = jp.asarray(self.x_0)
+        t_end_arg = jp.int32(t_end)
+
+        x_traj, obs_traj = self._rollout_fn(x0_jax, u_jax, t_end_arg)
+        self.nstep_allocated = t_end
+        return t_end, x_traj, u_jax, obs_traj
+
+    def rollout_t_steps_device(self, u_knots: Array, T_end: int = 0):
+        """
+        Device-side counterpart of rollout_t_steps. Skips host download.
+        Caller must consume the returned jax arrays with
+        task.cost_jax(..., t_end=t_end_returned).
+
+        u_knots are interpolated up to T_end normally, then padded to
+        self.T by repeating the last sampled control (sustain). The cost
+        function masks the contribution beyond T_end so the tail does not
+        affect the optimization objective.
+        """
+        if T_end <= 0:
+            T_end = self.T
+
+        u_knots = u_knots.reshape(-1, self.Nknots, self.Nu)
+        if self.scaling:
+            u_knots = self.scaling(u_knots)
+
+        u_traj = self.interpolate(u_knots, T_end)  # (N, T_end, Nu)
+        u_traj_full = self._pad_u_traj_to_T(u_traj, self.T)  # (N, self.T, Nu)
+        return self._rollout_dynamics_device(u_traj_full, t_end=T_end)
 
     # ------------------------------------------------------------------
     # Multiple shooting (optional; CPU parity)
